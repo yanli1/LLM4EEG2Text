@@ -38,7 +38,7 @@ def get_input_sample(sent_obj, tokenizer, bert_tokenizer,
             return None
         
         # assert len(word_eeg_embedding) == 105*len(bands)
-        return_tensor = torch.from_numpy(word_eeg_embedding)
+        return_tensor = torch.from_numpy(word_eeg_embedding).float()
         return normalize_1d(return_tensor)
 
     def get_sent_eeg(sent_obj, bands):
@@ -50,7 +50,7 @@ def get_input_sample(sent_obj, tokenizer, bert_tokenizer,
 
         sent_eeg_embedding = np.concatenate(sent_eeg_features)
         assert len(sent_eeg_embedding) == 105*len(bands)
-        return_tensor = torch.from_numpy(sent_eeg_embedding)
+        return_tensor = torch.from_numpy(sent_eeg_embedding).float()
         return normalize_1d(return_tensor)
 
     if sent_obj is None:
@@ -60,7 +60,7 @@ def get_input_sample(sent_obj, tokenizer, bert_tokenizer,
     input_sample = {}
     # get target label
     target_string = sent_obj['content']
-    sentence_eeg_data = sent_obj['rawData']
+    #sentence_eeg_data = sent_obj['rawData']
     input_sample['target_string'] = target_string
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
@@ -98,7 +98,7 @@ def get_input_sample(sent_obj, tokenizer, bert_tokenizer,
 
 
     if len(sent_obj['word']) < len(target_string.split()) * 0.5:
-        print(len(sent_obj['word']), len(target_string.split()), target_string)
+        #print(len(sent_obj['word']), len(target_string.split()), target_string)
         return None
     
     #if target_string in ZUCO_SENTIMENT_LABELS:
