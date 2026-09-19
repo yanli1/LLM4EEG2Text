@@ -53,8 +53,17 @@ python /home/runner/work/LLM4EEG2Text/LLM4EEG2Text/util/polymarket_superforecast
   --max-actions-per-week 150 \
   --max-avg-actions-per-week 60 \
   --min-median-gap-seconds 10 \
-  --min-resolved-actions 8
+  --min-resolved-actions 8 \
+  --report-summary \
+  --compare-day-week-range
 ```
+
+With `--report-summary`, output also includes:
+- how many users were found,
+- average edge in percent (how much the result favored them vs entry probability),
+- average number of actions per user.
+
+With `--compare-day-week-range`, output includes a second summary for users whose median action interval is between 1 day and 1 week.
 
 ## Citation
 ```

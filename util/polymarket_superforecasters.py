@@ -37,6 +37,7 @@ class UserScore:
     median_gap_seconds: float
     avg_edge: float
     total_edge: float
+    resolved_actions: int
 
 
 def _pick(record: Dict[str, Any], keys: Tuple[str, ...]) -> Optional[Any]:
@@ -238,11 +239,37 @@ def find_superforecasters(
                 median_gap_seconds=median_gap,
                 avg_edge=avg_edge,
                 total_edge=total_edge,
+                resolved_actions=len(edges),
             )
         )
 
     scored.sort(key=lambda s: (s.avg_edge, s.total_edge, -s.avg_actions_per_week), reverse=True)
     return scored[:top_k]
+
+
+def summarize_scores(scores: List[UserScore]) -> Dict[str, Any]:
+    if not scores:
+        return {
+            "users_found": 0,
+            "avg_edge_percent": 0.0,
+            "avg_actions_per_user": 0.0,
+            "avg_resolved_actions_per_user": 0.0,
+            "avg_actions_per_week_per_user": 0.0,
+        }
+    count = len(scores)
+    return {
+        "users_found": count,
+        "avg_edge_percent": 100.0 * sum(s.avg_edge for s in scores) / count,
+        "avg_actions_per_user": sum(s.actions for s in scores) / count,
+        "avg_resolved_actions_per_user": sum(s.resolved_actions for s in scores) / count,
+        "avg_actions_per_week_per_user": sum(s.avg_actions_per_week for s in scores) / count,
+    }
+
+
+def filter_scores_by_gap_range(
+    scores: List[UserScore], min_gap_seconds: float, max_gap_seconds: float
+) -> List[UserScore]:
+    return [s for s in scores if min_gap_seconds <= s.median_gap_seconds <= max_gap_seconds]
 
 
 def _load_records(path: str) -> List[Dict[str, Any]]:
@@ -280,6 +307,12 @@ def main() -> None:
     parser.add_argument("--max-avg-actions-per-week", type=float, default=60.0)
     parser.add_argument("--min-median-gap-seconds", type=float, default=10.0)
     parser.add_argument("--min-resolved-actions", type=int, default=8)
+    parser.add_argument("--report-summary", action="store_true", help="Output aggregate summary metrics.")
+    parser.add_argument(
+        "--compare-day-week-range",
+        action="store_true",
+        help="Also report users whose median action gap is between 1 day and 1 week.",
+    )
     args = parser.parse_args()
 
     records = _load_records(args.input)
@@ -294,7 +327,21 @@ def main() -> None:
         top_k=args.top_k,
     )
 
-    print(json.dumps([score.__dict__ for score in winners], ensure_ascii=False, indent=2))
+    if not args.report_summary and not args.compare_day_week_range:
+        print(json.dumps([score.__dict__ for score in winners], ensure_ascii=False, indent=2))
+        return
+
+    payload: Dict[str, Any] = {
+        "selected_users": [score.__dict__ for score in winners],
+        "summary": summarize_scores(winners),
+    }
+    if args.compare_day_week_range:
+        day_to_week = filter_scores_by_gap_range(winners, 24 * 3600, 7 * 24 * 3600)
+        payload["day_to_week_gap"] = {
+            "selected_users": [score.__dict__ for score in day_to_week],
+            "summary": summarize_scores(day_to_week),
+        }
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":
