@@ -22,6 +22,33 @@ from accelerate import Accelerator
 from transformers import get_linear_schedule_with_warmup
 import torch.nn.functional as F
 import random
+from data import ZuCo_dataset
+
+class SavedZuCoDataset(Dataset):
+    def __init__(self, inputs):
+        self.inputs = inputs
+
+    def __len__(self):
+        return len(self.inputs)
+
+    def __getitem__(self, idx):
+        x = self.inputs[idx]
+
+        return (
+            x["input_embeddings"],
+            x["seq_len"],
+            x["input_attn_mask"],
+            x["input_attn_mask_invert"],
+            x["target_ids"],
+            x["target_mask"],
+            x["sentiment_label"],
+            x["word_content"],
+            x["word_text_embeddings"],
+            x["word_token_nums"],
+            x["word_negative_embedding"],
+            x["subject"],
+            x["word_list"],
+        )
 
 
 
@@ -214,50 +241,52 @@ if __name__ == '__main__':
 
 
     ''' set up dataloader '''
-    whole_dataset_dicts = []
-    if 'task1' in task_name:
-        dataset_path_task1 = dataset_path +  'task1-SR/pickle/task1-SR-dataset.pickle'
-        with open(dataset_path_task1, 'rb') as handle:
-            whole_dataset_dicts.append(pickle.load(handle))
-    if 'task2' in task_name:
-        dataset_path_task2 = dataset_path + 'task2-NR/pickle/task2-NR-dataset.pickle' 
-        with open(dataset_path_task2, 'rb') as handle:
-            whole_dataset_dicts.append(pickle.load(handle))
-    if 'task3' in task_name:
-        dataset_path_task3 = dataset_path + 'task3-TSR/pickle/task3-TSR-dataset.pickle' 
-        with open(dataset_path_task3, 'rb') as handle:
-            whole_dataset_dicts.append(pickle.load(handle))
-    if 'taskNRv2' in task_name:
-        dataset_path_taskNRv2 = dataset_path + 'task2-NR-2.0/pickle/task2-NR-2.0-dataset.pickle' 
-        with open(dataset_path_taskNRv2, 'rb') as handle:
-            whole_dataset_dicts.append(pickle.load(handle))
-
-    print()
-
-    """save config"""
-    cfg_dir = dataset_path + 'config/decoding/'
-
-    if not os.path.exists(cfg_dir):
-        os.makedirs(cfg_dir)
-
-    with open(os.path.join(cfg_dir,f'{save_name}.json'), 'w') as out_config:
-        json.dump(args, out_config, indent = 4)
-
-    if model_name in ['BrainTranslator','BrainTranslatorNaive']:
-        tokenizer = BartTokenizer.from_pretrained(model_path)
-
-    elif model_name == 'LLMTranslator':
-        tokenizer = BertTokenizer.from_pretrained(model_path)
-
-    # train dataset
-    train_set = ZuCo_dataset(whole_dataset_dicts, 'train', tokenizer, 
-                             subject = subject_choice, eeg_type = eeg_type_choice, 
-                             bands = bands_choice, setting = dataset_setting, test_input=train_input, model_path=model_path)
-    # dev dataset
-    dev_set = ZuCo_dataset(whole_dataset_dicts, 'dev', tokenizer, 
-                           subject = subject_choice, eeg_type = eeg_type_choice, 
-                           bands = bands_choice, setting = dataset_setting, test_input=train_input, model_path=model_path)
-
+    print('[INFO] Loading preprocessed ZuCo inputs...')
+    
+    train_inputs_path = '/kaggle/working/ZuCo_processed_ALL_inputs.pt'
+    dev_inputs_path = '/kaggle/working/ZuCo_processed_test_inputs.pt'
+    
+    train_inputs = torch.load(
+        train_inputs_path,
+        map_location='cpu'
+    )
+    
+    dev_inputs = torch.load(
+        dev_inputs_path,
+        map_location='cpu'
+    )
+    
+    train_set = SavedZuCoDataset(train_inputs)
+    dev_set = SavedZuCoDataset(dev_inputs)
+    
+    dataset_sizes = {
+        'train': len(train_set),
+        'dev': len(dev_set)
+    }
+    
+    print('[INFO] train_set size:', len(train_set))
+    print('[INFO] dev_set size:', len(dev_set))
+    
+    train_dataloader = DataLoader(
+        train_set,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=2,
+        pin_memory=True
+    )
+    
+    val_dataloader = DataLoader(
+        dev_set,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=2,
+        pin_memory=True
+    )
+    
+    dataloaders = {
+        'train': train_dataloader,
+        'dev': val_dataloader
+    }
     
     dataset_sizes = {'train': len(train_set), 'dev': len(dev_set)}
     print('[INFO]train_set size: ', len(train_set))
@@ -265,9 +294,9 @@ if __name__ == '__main__':
     # print('[INFO]test_set size: ', len(test_set))
     
     # train dataloader
-    train_dataloader = DataLoader(train_set, batch_size = batch_size, shuffle=True, num_workers=4)
+    train_dataloader = DataLoader(train_set, batch_size = batch_size, shuffle=True, num_workers=2)
     # dev dataloader
-    val_dataloader = DataLoader(dev_set, batch_size = batch_size, shuffle=False, num_workers=4)
+    val_dataloader = DataLoader(dev_set, batch_size = batch_size, shuffle=False, num_workers=2)
     # dataloaders
     dataloaders = {'train':train_dataloader, 'dev':val_dataloader}
 
