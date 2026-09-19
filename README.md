@@ -27,6 +27,35 @@ bash ./scripts/train_decoding.sh
 bash ./scripts/eval_decoding.sh
 ```
 
+## Polymarket "Superforecaster" user search
+Use `/home/runner/work/LLM4EEG2Text/LLM4EEG2Text/util/polymarket_superforecasters.py` to rank users who:
+- are active at least once per week across their observed period,
+- are filtered for non-robotic behavior (caps on daily/weekly volume and minimum median gap between actions),
+- maximize the edge between realized win chance and market probability at entry.
+
+Supported inputs: `.csv`, `.json`, `.jsonl`.
+
+Expected fields (module supports aliases):
+- `user_id`
+- `timestamp`
+- `event_id`
+- `side` (`yes/no`, `1/0`, etc.)
+- `entry_probability` (`0..1` or `0..100`)
+- `resolved_outcome` (`yes/no`, `1/0`, etc.)
+
+Example:
+```
+python /home/runner/work/LLM4EEG2Text/LLM4EEG2Text/util/polymarket_superforecasters.py \
+  --input /absolute/path/to/actions.csv \
+  --top-k 20 \
+  --min-expected-weeks 4 \
+  --max-actions-per-day 40 \
+  --max-actions-per-week 150 \
+  --max-avg-actions-per-week 60 \
+  --min-median-gap-seconds 10 \
+  --min-resolved-actions 8
+```
+
 ## Citation
 ```
 @article{Zheng2025GuidingLT,
