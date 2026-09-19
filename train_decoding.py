@@ -389,7 +389,7 @@ if __name__ == '__main__':
     ''' set up optimizer and scheduler'''
 
     # optimizer_step2 = optim.SGD(model.parameters(), lr=step2_lr, momentum=0.9)
-    optimizer_step2 = optim.AdamW(model.parameters(), lr=step2_lr, betas=(0.9, 0.999), eps=1e-8, weight_decay=0.01)
+    optimizer_step2 = optim.Adam(model.parameters(),lr=step2_lr)
     exp_lr_scheduler_step2 = lr_scheduler.StepLR(optimizer_step2, step_size=30, gamma=0.1)
 
 
