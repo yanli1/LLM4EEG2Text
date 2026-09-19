@@ -239,7 +239,11 @@ if __name__ == '__main__':
     print(f'[INFO]using device {dev}')
     print()
 
+    if model_name in ['BrainTranslator','BrainTranslatorNaive']:
+        tokenizer = BartTokenizer.from_pretrained(model_path)
 
+    elif model_name == 'LLMTranslator':
+        tokenizer = BertTokenizer.from_pretrained(model_path)
     ''' set up dataloader '''
     print('[INFO] Loading preprocessed ZuCo inputs...')
     
